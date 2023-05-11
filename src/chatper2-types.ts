@@ -203,3 +203,70 @@ const myDog: Dog = {
     console.log(`WOOF @ ${person.name}`)
   }
 }
+
+// We can also extend the dog class and the as long as the shape stays the same, and their types are totally interchangeable
+class LoudDog extends Dog {
+  barkAtPerson(person: Person) {
+    console.log(`WOOF WOOF WOOF @ ${person.name}`)
+  }
+}
+
+// but if you add more properties to the class, then it's no longer interchangeable and follows the same rules as objects
+class QuietDog extends Dog {
+  isQuiet: boolean
+
+  constructor(breed: string, age: number, weight: number, isQuiet: boolean) {
+    super(breed, age, weight)
+    this.isQuiet = isQuiet
+  }
+
+
+}
+
+// @ts-expect-error
+const myQuietDog: QuietDog = {
+  breed: 'Lab',
+  age: 5,
+  weight: 60,
+  // There should be a property called isQuiet here, but there isn't
+  barkAtPerson(person: Person) {
+    console.log(`WOOF @ ${person.name}`)
+  }
+}
+
+// Interfaces are just slightly different syntactically than types
+
+// This is an example of an interface
+interface DogInterface {
+  breed: string
+  age: number
+  weight: number
+}
+
+// You can create a class and implement an interface or a type
+class Dog2 implements DogInterface {
+  breed: string
+  age: number
+  weight: number
+
+  constructor(breed: string, age: number, weight: number) {
+    this.breed = breed
+    this.age = age
+    this.weight = weight
+  }
+}
+
+// Interfaces are useful for declaration merging, a great example of that is the global window object
+
+// This is an example of declaration merging
+
+// There is an error because we aren't in a ambient declaration file or a module
+//@ts-expect-error
+declare global {
+  interface Window {
+    isDevelopment: boolean
+  }
+}
+
+// Now `isDevelopment` is a property on the window object and available globally
+
