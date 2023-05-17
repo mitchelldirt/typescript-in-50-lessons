@@ -357,3 +357,246 @@ async function sendMessage() {
 
 /* -------------------------------------------------- */
 // Lesson 20: Function Overloading
+
+function overloadSearch(
+  term: string,
+  tags?: string[]
+): Promise<Result[] | undefined>;
+
+// The below function is throwing a fit
+// @ts-ignore
+function overloadSearch(
+  term: string,
+  tags?: string[],
+  callback?: (results: Result[]) => void
+): void;
+
+function overloadSearch(term: string, p2?: unknown, p3?: string[]) {
+  // We only have a callback if p2 is of type function
+  const callback = typeof p2 === "function" ? p2 : undefined;
+
+  // We only have tags if p2 or p3 is defined and of type array
+  const tags =
+    typeof p2 !== "undefined" && Array.isArray(p2)
+      ? p2
+      : typeof p3 !== "undefined" && Array.isArray(p3)
+      ? p3
+      : undefined;
+
+  let queryString = `?query=${term}`;
+
+  if (tags && tags.length) {
+    // tags is defined and is an array
+    queryString += `&tags=${tags.join(",")}`;
+  }
+
+  const results = fetch("https://example.com/api/search${queryString}").then(
+    (res) => res.json()
+  );
+
+  if (callback) {
+    return void results.then((res) => callback(res));
+  } else {
+    return results;
+  }
+}
+
+// The above is a bit of a mess, but it's a good example of how to use function overloading. You need to take care when function overloading and don't do it too much.
+
+// We could also attempt to be more specific about the type of p2 by either narrowing it down to a function or an array of any.
+
+// * You can actually use functioning overloading to creation a type
+
+type SearchOverloadFn = {
+  (term: string, tags?: string[]): Promise<Result[]>;
+  (term: string, callback?: (results: Result[]) => void, tags?: string[]): void;
+};
+
+// The below has a weird type error that I don't feel like fixing right now
+// @ts-ignore
+const searchWithOverload: SearchOverloadFn = (
+  term: string,
+  p2?: string[] | ((results: Result[]) => void),
+  p3?: string[]
+) => {
+  // We only have a callback if p2 is of type function
+  const callback = typeof p2 === "function" ? p2 : undefined;
+
+  // We only have tags if p2 or p3 is defined and of type array
+  const tags =
+    typeof p2 !== "undefined" && Array.isArray(p2)
+      ? p2
+      : typeof p3 !== "undefined" && Array.isArray(p3)
+      ? p3
+      : undefined;
+
+  let queryString = `?query=${term}`;
+
+  if (tags && tags.length) {
+    // tags is defined and is an array
+    queryString += `&tags=${tags.join(",")}`;
+  }
+
+  const results = fetch(`https://example.com/api/search${queryString}`).then(
+    (res) => res.json()
+  );
+
+  if (callback) {
+    return void results.then((res) => callback(res));
+  } else {
+    return results;
+  }
+};
+
+/* -------------------------------------------------- */
+// Lesson 21: Generator Functions
+
+// Generator functions are functions that can be paused and resumed. They're useful for things like iterators and async functions.
+
+// There are two things to remember about generator functions
+// 1. There's an asterisk after the function keyword to denote that it's a generator function
+// 2. There's a yield keyword that's used to pause the function
+
+// Here's a basic example of a generator function
+
+function* generateStuff(): any {
+  yield 1;
+  yield 2;
+
+  let proceed = yield 3;
+
+  if (proceed) {
+    yield 4;
+  }
+
+  return "done";
+}
+
+type PollingResults = {
+  results: Result[];
+  complete: boolean;
+};
+
+async function polling(term: string): Promise<PollingResults> {
+  return fetch(`https://example.com/api/polling?query=${term}`).then((res) =>
+    res.json()
+  );
+}
+
+function append(result: Result) {
+  const node = document.createElement("li");
+  node.innerHTML = `
+  <a href="${result.url}">${result.title}</a>
+  `;
+
+  document.querySelector("#results")?.appendChild(node);
+}
+
+// The above are a function and type that would be used for fetching results in batches instead of all at once. This would be useful for things like infinite scrolling or pagination.
+
+// Below is an example of how to use a generator function to fetch results in batches
+
+async function* fetchResults(term: string) {
+  let state;
+
+  do {
+    state = await polling(term);
+
+    yield state.results;
+  } while (!state.complete);
+}
+
+// Now we can really implement the generator function
+
+document
+  .getElementById("searchField")
+  ?.addEventListener("change", handleChange);
+
+async function handleChange(this: HTMLElement, ev: Event) {
+  if (this instanceof HTMLInputElement) {
+    // Search for a term by calling the generator function
+    const resultsGen = fetchResults(this.value);
+    let next;
+
+    // Loop through the results until we're done
+    do {
+      next = await resultsGen.next();
+
+      // `next` can be a Result[] or void
+      // Because that is what the generator function fetchResults returns
+      if (typeof next.value !== "undefined") {
+        next.value.map(append);
+      }
+    } while (!next.done);
+  }
+}
+
+// Since we aren't actually using any of the `yield` values we can just use a for await loop instead
+
+async function handleChange2(this: HTMLElement, ev: Event) {
+  if (this instanceof HTMLInputElement) {
+    // Search for a term by calling the generator function
+    const resultsGen = fetchResults(this.value);
+
+    // Loop through the results until we're done
+    for await (const results of resultsGen) {
+      results.map(append);
+    }
+  }
+}
+
+// ! Uh oh - now we want to put something through the `yield` door
+async function handleChange3(this: HTMLElement, ev: Event) {
+  if (this instanceof HTMLInputElement) {
+    // Search for a term by calling the generator function
+    const resultsGen = fetchResults(this.value);
+    let next;
+    let count = 0;
+
+    // Loop through the results until we're done
+    do {
+      next = await resultsGen.next(count >= 5);
+
+      // `next` can be a Result[] or void
+      // Because that is what the generator function fetchResults returns
+      if (typeof next.value !== "undefined") {
+        next.value.map(append);
+      }
+    } while (!next.done);
+  }
+}
+
+// We should make the results from our generator function a bit more specific
+
+async function* fetchResults2(
+  term: string
+): AsyncGenerator<Result[], void, boolean> {
+  let state;
+  let stop = false;
+
+  do {
+    state = await polling(term);
+    stop = yield state.results;
+  } while (!state.complete && stop === false);
+}
+
+// CHAPTER RECAP:
+
+/*
+1. We learned about function types, their return types, and parameter types
+
+2. Callbacks! Argument order is more important than the names they are given
+
+3. We then learned about substitutability which allows functions to have a different shape then what their type defines so long as the context allows it
+
+4. Learned about the `this` keyword and how it can be used to define the type of `this` in a function. Now I won't be so lost when I see `this` in a function because TypeScript will tell me what it is
+
+5. Async function return types are automatically wrapped in a Promise. 
+
+6. We learned about how Typescript requires special function heads for tagged template literals (tagged template literals are weird functions that are used to parse template literals)
+
+7. Function overloading is a way to define multiple function types for a single function. This is useful for functions that can be called in multiple ways. Makes for more flexible functions, but increases complexity
+
+8. Lastly we learned about generator functions which are functions that can be paused and resumed. They're useful for things like iterators and async functions.
+
+*/
