@@ -198,6 +198,83 @@ let tomorrowsEvent: EventKind = "concert";
 // !-----------------------------------!
 // ! LESSON 24: Working with value types
 
+// We can now create a new TechEventBase type to utilize a value type union for kind
+
+// We also will need new TechEvent types haha
+type TechEventBaseNew = {
+  title: string;
+  description: string;
+  date: Date;
+  capacity: number;
+  rsvp: number;
+};
+
+// ! But instead of using kind in the TechEventBaseNew we can throw the kind in each of these TechEvent types!
+type ConferenceNew = TechEventBaseNew & {
+  location: string;
+  price: number;
+  talks: Talk[];
+  kind: "Conference";
+};
+
+type MeetupNew = TechEventBaseNew & {
+  location: string;
+  price: string;
+  talks: Talk[];
+  kind: "Meetup";
+};
+
+type WebinarNew = TechEventBaseNew & {
+  url: string;
+  price?: number;
+  talks: Talk;
+  kind: "Webinar";
+};
+
+type TechEventNew = WebinarNew | ConferenceNew | MeetupNew;
+
+// ! WHOA - now that the `kind` property is on each TechEvent Type you can be certain which properties you can pull off of it
+// * For example you know that if `kind` is meetup there will be a location property
+function getEventTeaser(event: TechEventNew) {
+  switch (event.kind) {
+    case "Webinar":
+      return `${event.title} Webinar. ` + `Available online at ${event.url}`;
+    case "Conference":
+      return `${event.title} Conference. ` + `Priced at ${event.price} USD`;
+    case "Meetup":
+      return `${event.title} Meetup. ` + `Hosted at ${event.location}`;
+    // case "u" returns an error because it's not possible in event.kind
+    // @ts-expect-error
+    case "u":
+      return ``;
+    default:
+      throw new Error("Whoops - bad move");
+  }
+}
+
+// Example TechEvent object
+const script19: TechEventNew = {
+  title: string,
+  date: new Date("2023-06-15"),
+  capacity: 300,
+  rsvp: 289,
+  description: "The feel-good JS conference",
+  // ? Why the 'as const' it tells typescript the type of kind should be 'Conference' not string
+  kind: "Conference" as const,
+  price: 129,
+  location: "Amsterdam",
+  talks: [
+    {
+      speaker: "Mitchell Mudd",
+      title: "How not to write C# code",
+      abstract: "...",
+    },
+  ],
+};
+
+// ! We can't do the below unless script19 is actually typed as a TechEvent. If it's not it will infer kind as string not conference. To fix that you can use as const
+getEventTeaser(script19);
+
 // !-----------------------------------!
 // ! LESSON 25: Dynamic Unions
 
