@@ -278,6 +278,82 @@ getEventTeaser(script19);
 // !-----------------------------------!
 // ! LESSON 25: Dynamic Unions
 
+function filterByEvent(list: TechEventNew[], kind: EventKind) {
+  return list.filter((event) => {
+    event.kind === kind;
+  });
+}
+
+declare const eventList: TechEventNew[];
+
+// You get auto complete on the kind of event
+filterByEvent(eventList, "Conference");
+filterByEvent(eventList, "Meetup");
+filterByEvent(eventList, "Webinar");
+
+// This won't work because TypeScript KNOWS it won't return anything
+// @ts-expect-error
+filterByEvent(eventList, "Concert");
+
+// Uh oh a new event type is incoming!
+type Hackathon = TechEventBaseNew & {
+  location: string;
+  price?: number;
+  kind: "Hackathon";
+};
+
+type TechEventNewer = ConferenceNew | WebinarNew | Hackathon | MeetupNew;
+
+// ! Oh no! This doesn't work because there's a disconnect between EventKind and TechEvent
+// @ts-expect-error
+filterByEvent(eventList, "Hackathon");
+
+// To fix this we can make a lookup or index access type
+// Instead of setting EventKind to a list of the string we use TechEvent["kind"] which will grab all the current possible kinds of events
+type EventKind2 = TechEventNewer["kind"];
+
+function filterByEvent2(list: TechEventNew[], kind: EventKind2) {
+  return list.filter((event) => {
+    event.kind === kind;
+  });
+}
+
+// * Now it works!!
+filterByEvent2(eventList, "Hackathon");
+
+// ? Next we ask what the heck are mapped types?
+
+type GroupedEvents = {
+  Conference: ConferenceNew[];
+  Hackathon: Hackathon[];
+  Meetup: MeetupNew[];
+  Webinar: WebinarNew[];
+};
+
+// This is a mapped type. We loop over EventKind2 to extract all of the 'kinds' out of it
+// This is not only simpler, but it makes sure that if we add a new type to EventKind2
+// That it stays up to date
+// ! This is a little less specific now as the types will all be `TechEventNewer`, but it automatically maps the key for us :) when we add a new type it will automatically add THAT key as well
+type GroupedEvents2 = {
+  [kind in EventKind2]: TechEventNewer[];
+};
+
+function groupEvents(events: TechEventNewer[]): GroupedEvents2 {
+  const grouped = {
+    Conference: <ConferenceNew[]>[],
+    Hackathon: <Hackathon[]>[],
+    Meetup: <MeetupNew[]>[],
+    Webinar: <WebinarNew[]>[],
+  };
+
+  events.forEach((event) => {
+    // Couldn't find a reason this gives an error, but it does....
+    // @ts-ignore
+    grouped[event.kind].push(event);
+  });
+
+  return grouped;
+}
 // !-----------------------------------!
 // ! LESSON 26: Object Types and Type predicates
 
