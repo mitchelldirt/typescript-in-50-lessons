@@ -356,9 +356,128 @@ function groupEvents(events: TechEventNewer[]): GroupedEvents2 {
 }
 // !-----------------------------------!
 // ! LESSON 26: Object Types and Type predicates
+// We're going to add some more complexity to our fake "events" system
+// Now there are users that can 'watch' events
+// They can also 'subscribe' to events meaning they plan to attend or did attend
+// If they are attending their status is 'responded'
+// Users can also have 'attended' events in the past
+// Lastly, a user can be 'signed off' meaning they are no longer interested in the event
+
+type userEvents = {
+  watching: TechEventNewer[];
+  rsvp: TechEventNewer[];
+  attended: TechEventNewer[];
+  signedOff: TechEventNewer[];
+};
+
+// We want to provide a function that will filter out events based on the user's status and the event type
+// This keyof keyword grabs all the keys from the userEvents type and makes them into a union
+type UserEventCategory = keyof userEvents;
+
+// Now we can use the UserEventCategory type to make sure the category is valid
+function filterUserEvent(
+  userEventList: userEvents,
+  category: UserEventCategory,
+  filterKind: EventKind2
+) {
+  const filteredList = userEventList[category];
+
+  if (filterKind) {
+    return filteredList.filter((event) => event.kind === filterKind);
+  }
+
+  return filteredList;
+}
+
+// ? What if this code is for someone else to use? What if they aren't using TypeScript? That's where type predicates come in
+
+// We could do something like this
+
+function isUserEventList(list: userEvents, category: string) {
+  return Object.keys(list).includes(category);
+}
+
+// This is safer and guarantees that the category is a valid key otherwise the function won't execute anything
+function filterUserEvent2(
+  userEventList: userEvents,
+  category: UserEventCategory,
+  filterKind: EventKind2
+) {
+  if (isUserEventList(userEventList, category)) {
+    const filteredList = userEventList[category];
+
+    if (filterKind) {
+      return filteredList.filter((event) => event.kind === filterKind);
+    }
+
+    return filteredList;
+  }
+}
+
+// ! Uh oh though, now we've lost all connection to userEvents and the type safety it provides and category is just a string
+
+// ? Type predicates to the rescue!
+// This is a type predicate. It's a function that returns a boolean and tells TypeScript that the type is what you say it is
+function isUserEventList2(
+  list: userEvents,
+  category: string
+): category is keyof userEvents {
+  return Object.keys(list).includes(category);
+}
 
 // !-----------------------------------!
 // ! LESSON 27: Down at the bottom: never
+
+// There is a type that's even narrower than a value type - never
+// This is the anti-type of any. It's a type that can never be assigned to anything and doesn't allow any operations to be performed on it.
+// ? So why would you use it?
+
+// We saw never earlier with the getEventTeaser function
+function getEventTeaser2(event: TechEventNew) {
+  switch (event.kind) {
+    case "Webinar":
+      return `${event.title} Webinar. ` + `Available online at ${event.url}`;
+    case "Conference":
+      return `${event.title} Conference. ` + `Priced at ${event.price} USD`;
+    case "Meetup":
+      return `${event.title} Meetup. ` + `Hosted at ${event.location}`;
+    // case "u" returns an error because it's not possible in event.kind
+    // @ts-expect-error
+    case "u":
+      return ``;
+    default:
+      // This 'event' is a never type because it's impossible to get here - we've covered all the cases
+      event;
+      throw new Error("Whoops - bad move");
+  }
+}
+
+// So when we're at the end of a switch statement or an if else where the else shouldn't be reached we should explicitly specify that it's a never type
+
+function neverError(message: string, token: never) {
+  return new Error(`${message}. ${token} should not exist`);
+}
+
+// * Now let's replace the default case in the switch statement with this
+// If we don't include an event Typescript will be mad at us which is good
+function getEventTeaser3(event: TechEventNewer) {
+  switch (event.kind) {
+    case "Webinar":
+      return `${event.title} Webinar. ` + `Available online at ${event.url}`;
+    case "Conference":
+      return `${event.title} Conference. ` + `Priced at ${event.price} USD`;
+    case "Meetup":
+      return `${event.title} Meetup. ` + `Hosted at ${event.location}`;
+    case "Hackathon":
+      return `${event.title} Hackathon. ` + `Hosted at ${event.location}`;
+    // case "u" returns an error because it's not possible in event.kind
+    // @ts-expect-error
+    case "u":
+      return ``;
+    default:
+      throw neverError("Whoops - bad move", event);
+  }
+}
 
 // !-----------------------------------!
 // ! LESSON 28: Undefined and Null
