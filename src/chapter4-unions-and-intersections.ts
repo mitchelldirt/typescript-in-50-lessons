@@ -481,3 +481,116 @@ function getEventTeaser3(event: TechEventNewer) {
 
 // !-----------------------------------!
 // ! LESSON 28: Undefined and Null
+
+// Null and undefined are known as bottom values and have no actual value.
+
+// People argue about whether there need to be bottom values in a type system.
+
+// Most people agree there definitely doesn't need to be two of them.
+
+let age: number;
+
+// TypeScript will complain about this because age is undefined
+// @ts-expect-error
+age = age + 1;
+
+// This can get worse though
+// Take for example trying to add some HTML to the DOM
+
+function getTeaserHTML(event: TechEventNewer) {
+  return `
+ <h2>${event.title}</h2>
+ <p>${event.description}</p> 
+  `;
+}
+
+function getTeaserListElement(event: TechEventNewer) {
+  const content = getTeaserHTML(event);
+  const li = document.createElement("li");
+  li.classList.add("event-teaser");
+  li.innerHTML = content;
+  return li;
+}
+
+function appendToList(event: TechEventNewer) {
+  const list = document.querySelector("#event-list");
+  const element = getTeaserListElement(event);
+
+  // This will throw an error because list could be null
+  // we can fix this with optional chaining or the ? operator
+  // Now if list is null it will just return undefined and not throw an error
+  list?.appendChild(element);
+}
+
+// We can catch these potential errors by either utilizing strictNullChecks or strict mode in our tsconfig.json file
+// Doing so will move null and undefined from the value type under (string, number, boolean, symbol, bigint) to their own type
+
+// ! If you must use a bottom value, stick with one. It's easier to reason about if you do so.
+
+// Recap:
+
+/* RECAP:
+
+1. Learned about union and intersection types
+
+2. Learned about discriminated unions and value types
+
+3. Learned about the const context and how it can be used to narrow types
+
+4. Found ways to dynamically create types through lookup and mapped types
+
+5. Build our own type predicates as custom type guards
+
+6. Learned about the never type and how it can be used to make our code safer
+
+7. Learned about the bottom values null and undefined and how to avoid them
+
+
+*/
+
+// INTERLUDE:
+
+// Arrays have other subtypes that we can use to make our code safer
+// An example of this is the tuple or readonly array type
+
+// First let's consider this function
+declare function useToggleState(id: number): {
+  state: boolean;
+  updateState: () => void;
+};
+
+// This function returns an object with a state property and an updateState function. It's similar to useState in React
+// We want to use object destructuring to get the state and updateState function out of the object
+
+const { state, updateState } = useToggleState(1);
+
+// But what if we want to use this function twice? We can't because the state and updateState variables will be overwritten. So we need to rename them like below which is annoying... and a bit ugly
+const { state: state2, updateState: updateState2 } = useToggleState(2);
+
+// If we used a tuple instead it would be much cleaner
+declare function useToggleState2(id: number): [boolean, () => void];
+
+const [consentBtn, updateConsentBtn] = useToggleState2(1);
+const [newsletterBtn, updateNewsletterBtn] = useToggleState2(2);
+
+// Tuples cannot be inferred by TypeScript so we need to explicitly type them
+
+// This is just an array of string | number
+let fakeTuple = ["Mitchell", 23];
+
+// This is a tuple of string and number
+// The const at the beginning is just for consistency to show you that it's a constant variable
+// The const keyword at the end makes the array read-only and in turn a tuple
+const realTuple = ["Mitchell", 23] as const;
+
+// Now we explore what a toggleState function could look like with a tuple
+// This is also a custom react hook... in essence
+function useToggleState3(id: number): [boolean, () => void] {
+  let state = false;
+
+  function updateState() {
+    state = !state;
+  }
+
+  return [state, updateState];
+}
