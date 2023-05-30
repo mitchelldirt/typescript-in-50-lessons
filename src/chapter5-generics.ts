@@ -99,6 +99,61 @@ function loadFile<Formats extends URLList>(
 // ? What's the downside of the above URLList type?
 // You can pass in a string that doesn't correlate to an actual format such as "format9999p"
 
+// First we can bring back our old friend keyof
+function loadFile2<Formats extends URLList>(
+  fileFormats: Formats,
+  format: keyof Formats
+) {
+  if (isAvailable(fileFormats, format) && typeof format === "string") {
+    loadFormat(format);
+  }
+}
+
+// Now we can't pass in a string that doesn't correlate to an actual format
+// @ts-expect-error
+loadFile2(videos, "format9999p");
+
+// Here is an actual example of a loadFile implementation
+async function loadFile3<Formats extends URLList>(
+  fileFormats: Formats,
+  format: keyof Formats
+) {
+  const res = await fetch(fileFormats[format].href);
+  return {
+    format,
+    loaded: res.status === 200,
+  };
+}
+
+const result = await loadFile3(videos, "format360p");
+
+if (result.format !== "format360p") {
+  throw new Error("Unexpected format");
+}
+
+// To make sure we're implementing the right format, we defined a return type of the format key
+
+type Loaded<key> = {
+  format: key;
+  loaded: boolean;
+};
+
+// Now we can use the Loaded type to define the return type of the loadFile function
+// We also create a generic type for the key of the format
+async function loadFile4<Formats extends URLList, Key extends keyof Formats>(
+  fileFormats: Formats,
+  format: Key
+): Promise<Loaded<Key>> {
+  const res = await fetch(fileFormats[format].href);
+  return {
+    format,
+    loaded: res.status === 200,
+  };
+}
+
+// Now we see the return type of data is Loaded<"format360p">
+const data = await loadFile4(videos, "format360p");
+
 // !-----------------------------------!
 // ! LESSON 32: Generic Mapped Types
 
@@ -110,3 +165,5 @@ function loadFile<Formats extends URLList>(
 
 // !-----------------------------------!
 // ! LESSON 35: Generic Type Defaults
+
+export {};
