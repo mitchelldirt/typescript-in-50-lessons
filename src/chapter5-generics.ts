@@ -157,6 +157,84 @@ const data = await loadFile4(videos, "format360p");
 // !-----------------------------------!
 // ! LESSON 32: Generic Mapped Types
 
+// the pick utility type allows you to grab certain properties from a type
+type HDVideo = Pick<videoFormatUrls, "format1080p" | "format720p">;
+
+// A record type can specify a key and a value type. Earlier we used a record type to specify that the key type was a string and the value type was a URL. This is a much cleaner way to do that.
+
+// ! OLD WAY
+type URLList2 = {
+  [k: string]: URL;
+};
+
+// ! NEW WAY
+type URLObject = Record<string, URL>;
+
+const urlObject: URLObject = {
+  format360p: new URL("https://www.example.com/360p"),
+  format480p: new URL("https://www.example.com/480p"),
+  format720p: new URL("https://www.example.com/720p"),
+  format1080p: new URL("https://www.example.com/1080p"),
+};
+
+// What if we only wanted to require at least one of the formats to be available?
+// We could define each format as a type and then use a union type to combine them
+type format360p = {
+  format360p: URL;
+};
+
+type format480p = {
+  format480p: URL;
+};
+
+type format720p = {
+  format720p: URL;
+};
+
+type format1080p = {
+  format1080p: URL;
+};
+
+type videoFormats = format360p | format480p | format720p | format1080p;
+
+// WOW THOUGH, that's a lot of code and maintaining that would be a nightmare
+// Instead let's use a mapped type to create the same thing
+// THis creates a union type of all the keys in the videoFormatUrls type as value types
+type split = keyof videoFormatUrls;
+
+// If we wanted a type which uses the key as the value type, we can use a mapped type
+type split2 = {
+  [K in keyof videoFormatUrls]: K;
+};
+
+// The above is the same as the below
+type split3 = {
+  format360p: "format360p";
+  format480p: "format480p";
+  format720p: "format720p";
+  format1080p: "format1080p";
+};
+
+// If we wanted to get the property types in a union instead of the property names / keys, we can use the following
+// We're creating the mapped type which is the same as the split2 type above, but then we're accessing the values like you would in an object/array
+type split4 = {
+  [K in keyof videoFormatUrls]: K;
+}[keyof videoFormatUrls];
+
+// This gives us a union type of Records where the key is the key and the value is that keys value. You can hover over the recordSplit type to see the type definition
+type recordSplit = {
+  [K in keyof videoFormatUrls]: Record<K, videoFormatUrls[K]>;
+}[keyof videoFormatUrls];
+
+// Now let's build a generic out of it
+type Split<Obj> = {
+  [Prop in keyof Obj]: Record<Prop, Obj[Prop]>;
+}[keyof Obj];
+
+// Now we can use the Split generic to create a union type of all the keys in the videoFormatUrls type as value types
+// ? Why is this useful?
+// Whenever we update the videoFormatUrls type, the Split generic will automatically update to reflect the changes
+type videoFormats2 = Split<videoFormatUrls>;
 // !-----------------------------------!
 // ! LESSON 33: Mapped Type Modifiers
 
