@@ -238,6 +238,112 @@ type videoFormats2 = Split<videoFormatUrls>;
 // !-----------------------------------!
 // ! LESSON 33: Mapped Type Modifiers
 
+// Once the user is signed in they can set their preferences for videos
+// keyof is used to prevent manual maintenance and theme uses a union of value types "dark" and "light" to prevent typos
+type UserPreferences = {
+  format: keyof videoFormatUrls;
+  subtitles: {
+    active: boolean;
+    language: keyof subtitles;
+  };
+  theme: "dark" | "light";
+};
+
+// Usually we would want to infer the type, but with defaults we want to be explicit and take the time to maintain them
+const defaultUserPreferences: Readonly<UserPreferences> = {
+  format: "format360p",
+  subtitles: {
+    active: false,
+    language: "english",
+  },
+  theme: "dark",
+};
+
+// ! Can't do this because it's readonly
+// @ts-expect-error
+defaultUserPreferences.format = "format720p";
+
+// We can create a function that overwrites the default preferences with the user preferences
+
+// We use the Partial utility type to make all the properties optional since we don't know which ones the user will set. The Required utility type does the opposite and makes all the properties required
+function mergePreferences(
+  defaultPreferences: UserPreferences,
+  userPreferences: Partial<UserPreferences>
+) {
+  return {
+    ...defaultPreferences,
+    ...userPreferences,
+  };
+}
+
+// Readonly can be used to make all the properties readonly; however, it doesn't mean you can't make modifications in javascript. To prevent this, we can use Object.freeze
+function genDefaults(obj: UserPreferences) {
+  return Object.freeze(obj);
+}
+
+// I typed this as Readonly, but it's not necessary because genDefaults returns a frozen object which is readonly. Try hovering over the defaultUserPreferences2 variable to see the type
+const defaultUserPreferences2 = genDefaults({
+  format: "format360p",
+  subtitles: {
+    active: false,
+    language: "english",
+  },
+  theme: "dark",
+});
+
+mergePreferences(defaultUserPreferences2, {
+  // ! The below returns an error because the subtitles property is not optional, the whole object must be passed in. This is because we used the standard Partial utility type
+  // @ts-expect-error
+  subtitles: {
+    language: "german",
+  },
+});
+
+// Below we see how to use readonly and partial on nested objects
+type DeepReadonly<Obj> = {
+  readonly [Key in keyof Obj]: DeepReadonly<Obj[Key]>;
+};
+
+function genDefaults2(obj: UserPreferences): DeepReadonly<UserPreferences> {
+  return Object.freeze(obj);
+}
+
+const defaultUserPreferences3 = genDefaults2({
+  format: "format360p",
+  subtitles: {
+    active: false,
+    language: "english",
+  },
+  theme: "dark",
+});
+
+// Now we can't modify the properties within the nested property active or language because they are readonly
+// @ts-ignore
+defaultUserPreferences3.subtitles.active = true;
+
+// The same as the above, but with the partial utility type
+type DeepPartial<Obj> = {
+  [Key in keyof Obj]?: DeepPartial<Obj[Key]>;
+};
+
+// We can also modify our mergePreferences function to use the DeepPartial utility type
+function mergePreferences2(
+  defaultPreferences: UserPreferences,
+  userPreferences: DeepPartial<UserPreferences>
+) {
+  return {
+    ...defaultPreferences,
+    ...userPreferences,
+  };
+}
+
+// Huzzah! No errors!
+mergePreferences2(defaultUserPreferences3, {
+  subtitles: {
+    language: "german",
+  },
+});
+
 // !-----------------------------------!
 // ! LESSON 34: Binding Generics
 
