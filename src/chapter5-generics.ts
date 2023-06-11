@@ -391,7 +391,101 @@ function combinePreferences<UserPref extends Partial<UserPreferences>>(
   };
 }
 
+// The above creates an intersection type of the defaultPreferences and userPreferences types where "format720p" and "dark" are value types that override the default types
+// ! Be careful though, if you make the defaultPreferences readonly, the resulting type of an intersection of readonly and value types will be never - therefore theme and format would be unusable
+
 // !-----------------------------------!
 // ! LESSON 35: Generic Type Defaults
 
+// In the last chapter we used a "video" element to demonstrate how to use generics. In real life we might have a class that abstracts away the video element and provides a more robust api that's easier for our coworkers to use
+
+// The behavior of our class should be as follows
+// 1. We can instantiate as many instances of the class as we want and pass our user preferences to each instance
+
+// 2. We can attach any HTML elements to the class. If it's a video element, we can immediately start playing the video, otherwise we use it as a wrapper for the video element. (video elements are the default)
+
+// 3. The element is not required for instantiation, it can be left as undefined and loaded in later
+
+// This class helps make a property optional
+type Nullable<G> = G | null;
+
+class Container {
+  #element?: Nullable<HTMLElement>;
+  #prefs: UserPreferences;
+
+  constructor(prefs: UserPreferences) {
+    this.#prefs = prefs;
+  }
+
+  set element(value: Nullable<HTMLElement>) {
+    this.#element = value;
+  }
+
+  get element(): Nullable<HTMLElement> {
+    return this.#element ?? null;
+  }
+
+  loadVideo(formats: videoFormatUrls) {
+    const selectedFormat = formats[this.#prefs.format].href;
+
+    if (this.#element instanceof HTMLVideoElement) {
+      this.#element.src = selectedFormat;
+    } else if (this.#element) {
+      const video = document.createElement("video");
+      this.#element.appendChild(video);
+      video.src = selectedFormat;
+    } else {
+      throw new Error("No element provided");
+    }
+  }
+}
+
+const container = new Container(defaultUserPreferences3);
+container.element = document.createElement("video");
+container.loadVideo(videos);
+
+// For some the HTMLElement type is too general, so we can use a generic type to make it more specific
+
+// By providing the default = HTMLVideoElement, we can instantiate the class without passing in a generic type
+class Container2<GElement extends HTMLElement = HTMLVideoElement> {
+  #element?: Nullable<GElement>;
+  #prefs: UserPreferences;
+
+  constructor(prefs: UserPreferences) {
+    this.#prefs = prefs;
+  }
+
+  set element(value: Nullable<GElement>) {
+    this.#element = value;
+  }
+
+  get element(): Nullable<GElement> {
+    return this.#element ?? null;
+  }
+}
+
+// If you hover container2 you'll see that the generic type is HTMLVideoElement
+const container2 = new Container2(defaultUserPreferences3);
+
+// Here we declare a new function to create a video. We can use the generic type to make the return type more specific
+declare function createVideo<GElement extends HTMLElement = HTMLVideoElement>(
+  prefs: UserPreferences,
+  formats: videoFormatUrls,
+  element?: GElement
+): HTMLVideoElement;
+
+// Be careful with providing default types though, because it can lead to unexpected behavior. If you wanted to pass in HTMLAudioElement, you'd get an HTMLVideoElement as the return type
+
+const a = createVideo<HTMLAudioElement>(defaultUserPreferences3, videos);
+
+// ! WORDS OF WISDOM FROM STEFAN BAUMGARTNER ABOUT NAMING GENERIC TYPES
+// Uppercase words and no single letters i.e. T U V W X Y Z
+
+// Abbreviate, but keep it readable Obj > Object > O
+
+// Use prefixes where applicable i.e. URLObj = URL Object or GElement = Generic Element
+
+// If we have a URLObj then the keys could be of type UKey
+
+// Readability > Conciseness
 export {};
