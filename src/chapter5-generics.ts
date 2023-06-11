@@ -347,6 +347,50 @@ mergePreferences2(defaultUserPreferences3, {
 // !-----------------------------------!
 // ! LESSON 34: Binding Generics
 
+// In this chapter we're exploring type annotations, type inference, and generic type binding
+
+// This works great :)
+mergePreferences2(defaultUserPreferences3, {
+  format: "format720p",
+  theme: "light",
+});
+
+const newPreferences = {
+  format: "format720p",
+  theme: "dark",
+};
+
+// ? WHAT? Why doesn't this work? It's the same as the above
+// Well without explicitly typing the newPreferences variable, typescript infers the type as the properties as type string. This is because typescript infers the type of the object as the most general type possible
+// @ts-expect-error
+mergePreferences2(defaultUserPreferences3, newPreferences);
+
+const newPreferences2 = {
+  format: "format720p",
+  theme: "dark",
+} as const;
+
+// This works because the as const keyword prevents the variable from being modified before it's passed into the function. Typescript KNOWS that the properties are of type "format720p" and "dark"
+mergePreferences2(defaultUserPreferences3, newPreferences2);
+
+// ! This would also work, and in my opinion is the best way to do it
+const newPreferences3: Partial<UserPreferences> = {
+  format: "format720p",
+  theme: "dark",
+};
+
+// The process of substituting a concrete type for a generic type is called binding
+
+function combinePreferences<UserPref extends Partial<UserPreferences>>(
+  defaultPreferences: UserPreferences,
+  userPreferences: UserPref
+) {
+  return {
+    defaultP: defaultPreferences,
+    userP: userPreferences,
+  };
+}
+
 // !-----------------------------------!
 // ! LESSON 35: Generic Type Defaults
 
