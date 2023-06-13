@@ -88,6 +88,50 @@ fetchOrder2(x); // Order
 // !-----------------------------------!
 // ! LESSON 37: Combining function overloads and conditional types
 
+// Conditional types are great for simplifying function overloads. Sometimes you may want to combine the two. This is especially true when dealing with optional parameters.
+
+// if we wanted to do two fetch order functions that are both asynchronous. One that takes input and returns a promise and another that takes input with a callback and returns void we'd be better off using function overloads.
+type Callback<Res> = (result: Res) => void;
+
+declare function asyncFetchOrder<Param extends FetchParams>(
+  param: Param
+): Promise<FetchReturn<Param>>;
+
+declare function asyncFetchOrder<Param extends FetchParams>(
+  param: Param,
+  func: Callback<FetchReturn<Param>>
+): void;
+
+// We can also use the rest parameter syntax to allow for multiple parameters.
+declare function asyncFetchOrder<Param extends FetchParams>(
+  ...params: [param: Param, func?: Callback<FetchReturn<Param>>]
+): void;
+
+declare function asyncFetchOrder<Param extends FetchParams>(
+  ...params: [param: Param]
+): Promise<FetchReturn<Param>>;
+
+// We could create some helper types so that we don't need to do function overloads like the above example.
+
+type FetchCb<T extends FetchParams> = Callback<FetchReturn<T>>;
+
+type AsyncResult<FHead, Par extends FetchParams> = FHead extends [
+  Par,
+  FetchCb<Par>
+]
+  ? void
+  : FHead extends [Par]
+  ? Promise<FetchReturn<Par>>
+  : never;
+
+// This is incredibly flexible. We can now use any combination of parameters and get the correct return type. It sacrafices big time on readability though.
+declare function asyncFetchOrder2<Param extends FetchParams, FHead>(
+  ...args: [FHead]
+): AsyncResult<FHead, Param>;
+
+// if your input types rely on a union and you need to select a respective return type based on that input then conditional types are the way to go.
+
+// If the function shape is totally different i.e. optional parameters, relationship between input args are different, and the return type is easy to follow then function overloads might be a better choice.
 // !-----------------------------------!
 // ! LESSON 38: Distributive conditionals
 
