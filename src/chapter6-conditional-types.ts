@@ -135,8 +135,142 @@ declare function asyncFetchOrder2<Param extends FetchParams, FHead>(
 // !-----------------------------------!
 // ! LESSON 38: Distributive conditionals
 
+// Let's dwell more on these types
+
+type FetchParams2 = Customer | Product | number;
+
+// This conditional type translates to
+/*
+RETURN: A type representing what a function should return based on its input.
+
+PARAM: Is one of the types in the union of FetchParams2
+
+IF PARAM is a Customer then RETURN Order[]
+
+IF PARAM is a Product then RETURN Order[]
+
+IF PARAM is a number then RETURN Order  
+*/
+type FetchReturn2<Param extends FetchParams2> = Param extends Customer
+  ? Order[]
+  : Param extends Product
+  ? Order[]
+  : Order;
+
+// Conditional typing gets a little different when we use unions. Let's look at a different example.
+
+// ! This will actually run as a union of conditional types and return a union of the possible results. It won't return duplicate types or those that could never be returned.
+type FetchByProductOrId = FetchReturn2<Product | number>;
+
+// Here's an example of what that would look like.
+
+type FetchByProductOrId2 =
+  | (Product extends Customer
+      ? Order[]
+      : Product extends Product
+      ? Order[]
+      : Order)
+  | (number extends Customer
+      ? Order[]
+      : number extends Product
+      ? Order[]
+      : Order);
+
+// Naked types are defined as types that are not wrapped in any other type, including tuples, arrays, and conditional types. An example of a naked type is Order, while [number] is not a naked type because it is wrapped in an array type
+
+// Non-naked types can have side effects especially when used in a conditional type. Let's look at an example.
+
+type FetchReturn3<Param extends FetchParams2> = [Param] extends [Customer]
+  ? Order[]
+  : [Param] extends [Product]
+  ? Order[]
+  : Order;
+
+// This is valid
+type FetchByCustomer = FetchReturn3<Customer>;
+
+// This is not valid
+type FetchByCustomerOrId = FetchReturn3<Customer | number>;
+// When it checks if [Customer | number] extends [Customer] it will return false because [Customer | number] is not a naked type. It is wrapped in a union type. This means that the conditional type will resolve to Order.
+
+// A way to fix this behavior is by providing a base case for the conditional type.
+// This is valid now because the above type that failed before will now resolve to never
+type FetchReturn4<Param extends FetchParams2> = [Param] extends [Customer]
+  ? Order[]
+  : [Param] extends [Product]
+  ? Order[]
+  : [Param] extends [number]
+  ? Order
+  : never;
+
 // !-----------------------------------!
 // ! LESSON 39: Filtering with never
+
+// Filtering with never can be incredibly useful. We want to create the types model of our application such that types don't need to be actively maintained and can rely upon the base types model.
+
+// Now we want to create different mediums of music for our e commerce store
+type Medium = {
+  id: number;
+  title: string;
+  artist: string;
+};
+
+type TrackInfo = {
+  duration: number;
+  tracks: number;
+};
+
+type CD = Medium &
+  TrackInfo & {
+    kind: "cd";
+  };
+
+type Vinyl = Medium & {
+  a: TrackInfo;
+  b: TrackInfo;
+} & {
+  kind: "vinyl";
+};
+
+type AllMedia = CD | Vinyl;
+type MediaKinds = AllMedia["kind"]; // 'cd' | 'vinyl'
+
+// Now that we have our base types we can create a function called createMedium which has 2 parameters:
+
+// 1. Takes a medium kind
+
+// 2. Takes the remaining information needed
+
+// Then it returns the newly created medium
+// the info parameter and the return type need to be improved upon
+declare function createMedium<Kind extends MediaKinds>(
+  kind: Kind,
+  // @ts-expect-error
+  info
+): AllMedia;
+
+// Now let's focus on the output
+type SelectBranch<Branch, Kind> = Branch extends { kind: Kind }
+  ? Branch
+  : never;
+
+// The return type for this function is a conditional type. If the Branch type extends the kind then it will return the Branch type. Otherwise it will return never.
+type SelectCD = SelectBranch<AllMedia, "cd">;
+
+// Now the return type is any type that extends the kind or never
+declare function createMedium<Kind extends MediaKinds>(
+  kind: Kind,
+  // @ts-expect-error
+  info
+): SelectBranch<AllMedia, Kind>;
+
+// Another way to handle that would be to use the Extract utility type
+// The extract utility type will extract all types from a union that are assignable to the provided type
+declare function createMedium<Kind extends MediaKinds>(
+  kind: Kind,
+  // @ts-expect-error
+  info
+): Extract<AllMedia, { kind: Kind }>;
 
 // !-----------------------------------!
 // ! LESSON 40: Composing helper types
