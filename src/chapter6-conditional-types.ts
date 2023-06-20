@@ -275,6 +275,65 @@ declare function createMedium<Kind extends MediaKinds>(
 // !-----------------------------------!
 // ! LESSON 40: Composing helper types
 
+// We want to focus on adding the missing information. We're trying to add everything that's necessary to create the medium. we don't need id or kind as id is generated and kind is something we will have already defined.
+
+// Here's examples of what those types would look like
+type CDInfo = {
+  title: string;
+  description: string;
+  tracks: number;
+  duration: number;
+};
+
+type LPInfo = {
+  title: string;
+  description: string;
+  sides: {
+    a: {
+      tracks: number;
+      duration: number;
+    };
+    b: {
+      tracks: number;
+      duration: number;
+    };
+  };
+};
+
+// ? What if we don't want to maintain those types??
+// Let's figure out which keys we don't need
+
+type Removable = "id" | "kind";
+
+// Now we need to filter out those properties from the type
+// This reads as if A is in B remove it otherwise returns A. It basically will loop over type B until it either removes or adds each property
+type Remove<A, B> = A extends B ? never : A;
+
+type CDKeys = keyof CD;
+
+// This is removing types from CDKeys that are in Removable
+type BetterCDKeys = Remove<CDKeys, Removable>;
+
+// This is the built in TypeScript way of accomplishing that
+type EvenBetterCDKeys = Exclude<CDKeys, "kind" | "id">;
+
+// Now we need a type that represents those keys
+// This Picks out only those properties of CD which aren't kind and id then makes a type out of them
+type NewCDInfo = Pick<CD, Exclude<keyof CD, "kind" | "id">>;
+
+// ! But wait! There's a better, cleaner, more typescript way to do the above... the Omit utility type
+type BetterNewCDInfo = Omit<CD, "id" | "kind">;
+
+// The last thing we need to do is compose everything into a createMedium function
+// To do that we need to pass the selected branch (vinyl or cd) to Omit
+
+type GetInfo<Med> = Omit<Med, Removable>;
+
+declare function createMedium<Kind extends MediaKinds>(
+  kind: Kind,
+  info: GetInfo<SelectBranch<AllMedia, Kind>>
+): SelectBranch<AllMedia, Kind>;
+
 // !-----------------------------------!
 // ! LESSON 41: The infer keyword
 
