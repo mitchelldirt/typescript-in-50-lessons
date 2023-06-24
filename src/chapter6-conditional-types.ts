@@ -337,5 +337,50 @@ declare function createMedium<Kind extends MediaKinds>(
 // !-----------------------------------!
 // ! LESSON 41: The infer keyword
 
+let userId = 0;
+
+// @ts-ignore
+function createUser(names, roles) {
+  return {
+    id: userId++,
+    names,
+    roles,
+  };
+}
+
+// The above simple. We have a function that takes names and roles and returns an object with an id, names, and roles. The id is incremented each time the function is called.
+
+// The roles that we are to be divided between admin, maintenance, and shipping where admin has the most permissions and shipping has the least.
+
+function createUser2(
+  name: string,
+  role: "admin" | "maintenance" | "shipping",
+  isActive: boolean
+) {
+  return {
+    id: userId++,
+    name,
+    role,
+    isActive,
+    createdAt: new Date(),
+  };
+}
+
+// The type of user should be the return type of the function createUser2
+
+type GetReturn<Fun> = Fun extends (...args: any[]) => any ? Fun : never;
+
+// Another way to accomplish the above is by using the infer keyword
+
+type GetReturn2<Fun> = Fun extends (...args: any[]) => infer Return
+  ? Return
+  : never;
+
+// Helper types are great when we care more about the behavior of the type than the type itself.
+
+type Unpack<T> = T extends Promise<infer Result> ? Result : T;
+
+type A = Unpack<Promise<string>>; // string
+
 // !-----------------------------------!
 // ! LESSON 42: Working with null
