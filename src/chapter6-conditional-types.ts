@@ -384,3 +384,54 @@ type A = Unpack<Promise<string>>; // string
 
 // !-----------------------------------!
 // ! LESSON 42: Working with null
+
+// We learned that null and undefined are subtypes of all other types. By setting strictNullChecks to true we can prevent null and undefined from being assignable to other types.
+
+// Sometimes have one of these bottom types is inevitable.
+
+declare function fetchOrderList(input: Customer | Product): Promise<Order[]>;
+
+// The function above is flawed because if we use fetch then the return type will actually be any. We can let typescript know that there's the possibility of null by using the union type.
+
+// This is much safer because it forces us to check if the incoming data is null or not.
+declare function fetchOrderList2(
+  input: Customer | Product
+): Promise<Order[] | null>;
+
+// To handle null we have two options. The first of which being what we just did above
+
+declare function listOrders(orders: Order[] | null): void;
+
+// We have to check if the value is null in the above function, but we could also handle this issue by making sure that null can't be passed in the first place.
+
+declare function listOrders(orders: Order[]): void;
+
+declare function isAvailable<Obj>(obj: Obj): obj is NonNullable<Obj>;
+
+// The NonNullable utility type in TypeScript translates to
+
+// IF type T is null OR undefined then return never ELSE return T
+
+type NonNullable2<T> = T extends null | undefined ? never : T;
+
+// Here is a better implementation of isAvailable that returns a boolean
+
+function isAvailable2<Obj>(obj: Obj): obj is NonNullable<Obj> {
+  return obj !== null && obj !== undefined;
+}
+
+// ! RECAP
+
+// Conditional types are great to use to make connections between input types and outputs types
+
+// Using function overloading and conditional typing can help keep our application more readable
+
+// A conditional type of union types is like a union type of conditional types
+
+// We can filter with the never type which makes our unions safer and more explicit
+
+// We can use helper function like Pick, Extract, and Omit to make our types more readable
+
+// We learned about the infer keyword which allows us to extract types from other types
+
+// We learned how to work with null return types and use the NonNullable utility type in a type predicate
