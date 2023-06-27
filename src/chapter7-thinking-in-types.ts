@@ -135,6 +135,128 @@ const obj = itemSerializer.deserialize(serialization);
 // !-----------------------------------!
 // ! LESSON 45: Service Definitions
 
+// In this lesson we'll be seeing
+/*
+- Mapped types
+- Conditional types
+- String and Number constructors
+- Control flow analysis
+*/
+
+// We're trying to help our colleagues defined a service through a js object. This example will be for opening, closing, and writing to a file.
+
+const serviceDefinition = {
+  open: { filename: String },
+  insert: { pos: Number, text: String },
+  delete: { post: Number, len: Number },
+  close: {},
+};
+
+// In the above String and Number are constructors NOT Typescript types.
+
+// We want to have a function createService that we pass two things to
+// 1. The service definition in the format described above
+// 2. A request handler. This function will receive messages and payloads. We expect to get a message open where the payload will be the filename
+
+// First we're going to create the initial function head without a lot of the content present
+
+declare function createService<S extends ServiceDefinition>(
+  serviceDefinition: S,
+  handler: RequestHanlder<S>
+): ServiceObject<S>;
+
+// A service definition has keys that we don't know yet and lots of method definitions
+type ServiceDefinition = {
+  [methodName: string]: MethodDefinition;
+};
+
+// This is the "payload" for each method
+// a key we don't know yet and either a string or a number constructor (as seen earlier)
+// paramName key is either a StringConstructor or a NumberConstructor
+type MethodDefinition = {
+  [paramName: string]: StringConstructor | NumberConstructor;
+};
+
+// The type provided should be ServiceDefinition and the return type will be a boolean based on if the request was successful or not
+type RequestHandler<T extends ServiceDefinition> = (
+  req: RequestObject<T>
+) => boolean;
+
+// The request object is defined by the service definition that we pass in. Each key is a message and the object after it is the payload
+
+type RequestObject<T extends ServiceDefinition> = {
+  [P in keyof T]: {
+    message: P;
+    payload: RequestPayload<T[P]>;
+  };
+}[keyof T]; // The keyof T will create a union of all of the keys in the service definition
+
+// The request payload is defined by the object of eadch key in the service definition
+
+type RequestPayload<T extends MethodDefinition> =
+  // Is the object empty?
+  {} extends T
+    ? undefined
+    : {
+        [P in keyof T]: TypeFromConstructor<T[P]>;
+      };
+
+type TypeFromConstructor<T> = T extends StringConstructor
+  ? string
+  : T extends NumberConstructor
+  ? number
+  : never;
+
+// Now we are going to create the ServiceObject type
+
+type ServiceObject<T extends ServiceDefinition> = {
+  [P in keyof T]: ServiceMethod<T[P]>;
+};
+
+// Each service method will take a payload that's defined in the object after each key in the service definition. This is what ServiceMethod will be
+
+// If the object is empty, we don't need to define the payload. Otherwise we pass in the payload that we defined earlier
+type ServiceMethod<T extends MethodDefinition> = {} extends T
+  ? () => boolean
+  : (payload: RequestPayload<T>) => boolean;
+
+function createService<S extends ServiceDefinition>(
+  serviceDef: S,
+  handler: RequestHandler<S>
+): ServiceObject<S> {
+  const service: Record<string, Function> = {};
+
+  for (const methodName in serviceDef) {
+    service[methodName] = (payload: any) =>
+      handler({ message: methodName, payload });
+  }
+
+  // Typecast to provide some type safety since we can't know for sure what type the service object will be
+  return service as ServiceObject<S>;
+}
+
+// This is what the service object will look like
+const service = createService(serviceDefinition, (req: any) => {
+  switch (req.message) {
+    case "open":
+      req.payload.filename;
+      break;
+    case "insert":
+      req.payload.pos;
+      req.payload.text;
+      break;
+    case "delete":
+      req.payload.pos;
+      req.payload.len;
+      break;
+    case "close":
+      break;
+    default:
+      return false;
+  }
+  return true;
+});
+
 // !-----------------------------------!
 // ! LESSON 46: DOM JSX Engine, part 1
 
