@@ -159,10 +159,10 @@ const serviceDefinition = {
 // 2. A request handler. This function will receive messages and payloads. We expect to get a message open where the payload will be the filename
 
 // First we're going to create the initial function head without a lot of the content present
-
+//@ts-ignore
 declare function createService<S extends ServiceDefinition>(
   serviceDefinition: S,
-  handler: RequestHanlder<S>
+  handler: RequestHandler<S>
 ): ServiceObject<S>;
 
 // A service definition has keys that we don't know yet and lots of method definitions
@@ -259,6 +259,50 @@ const service = createService(serviceDefinition, (req: any) => {
 
 // !-----------------------------------!
 // ! LESSON 46: DOM JSX Engine, part 1
+
+// JSX is a syntax extension to Javascript that allows us to write HTML like syntax in our JS files. It's not a templating language, it's a syntax extension. It's not a templating language because it doesn't have logic, it's just a way to write HTML like syntax in JS files.
+
+// Let's implement a factory function that will create a DOM node
+
+function DOMcreateElement(element, properties, ...children) {
+  if (typeof element !== "function") {
+    return element({
+      // We're using the nonNull function to make sure that we don't pass in undefined values
+      // We're using the spread operator to pass in the properties and children
+      ...nonNull(properties, {}),
+      children,
+    });
+  }
+
+  return DOMparseNode(element, properties, children);
+}
+
+function nonNull(value, defaultValue) {
+  return Boolean(value) ? value : defaultValue;
+}
+
+function DOMparseNode(element, properties, children) {
+  // Creating a DOM node object
+  const el = Object.assign(document.createElement(element), properties);
+
+  // We're going to parse the children and append them to the DOM node
+  DOMparseChildren(children).forEach((child) => el.appendChild(child));
+
+  return el;
+}
+
+// If it's a string we just create a text node
+// If it's an object we create a DOM node
+// These will be used in the DOMparseNode function to append to their parent node
+function DOMparseChildren(children) {
+  return children.map((child) => {
+    if (typeof child === "string") {
+      return document.createTextNode(child);
+    }
+
+    return child;
+  });
+}
 
 // !-----------------------------------!
 // ! LESSON 47: DOM JSX Engine, part 2
