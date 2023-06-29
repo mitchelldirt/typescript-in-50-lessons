@@ -264,8 +264,40 @@ const service = createService(serviceDefinition, (req: any) => {
 
 // Let's implement a factory function that will create a DOM node
 
-function DOMcreateElement(element, properties, ...children) {
-  if (typeof element !== "function") {
+// Much looser implementation of Function
+type Fun = (...args: any[]) => any;
+
+// Now we need to type the element. If it's in the HTML spec, we want to make sure that it's a valid element. We can do this by using the HTMLElementTagNameMap otherwise we'll just use HTMLElement
+type AllElementKeys = keyof HTMLElementTagNameMap;
+
+type CreatedElement<T> = T extends AllElementKeys
+  ? HTMLElementTagNameMap[T]
+  : HTMLElement;
+
+type Props<T> = T extends Fun
+  ? Parameters<T>[0]
+  : T extends string
+  ? Partial<CreatedElement<T>>
+  : never;
+
+function DOMcreateElement<T extends string>(
+  element: T,
+  properties: Props<T>,
+  ...children: PossibleChildren[]
+): HTMLElement;
+
+function DOMcreateElement<F extends Fun>(
+  element: F,
+  properties: Props<F>,
+  ...children: PossibleChildren[]
+): HTMLElement;
+
+function DOMcreateElement(
+  element: any,
+  properties: any,
+  ...children: any[]
+): HTMLElement {
+  if (typeof element === "function") {
     return element({
       // We're using the nonNull function to make sure that we don't pass in undefined values
       // We're using the spread operator to pass in the properties and children
@@ -277,11 +309,15 @@ function DOMcreateElement(element, properties, ...children) {
   return DOMparseNode(element, properties, children);
 }
 
-function nonNull(value, defaultValue) {
+function nonNull<T, U>(value: T, defaultValue: U) {
   return Boolean(value) ? value : defaultValue;
 }
 
-function DOMparseNode(element, properties, children) {
+function DOMparseNode<T extends string>(
+  element: T,
+  properties: Props<T>,
+  children: PossibleChildren[]
+) {
   // Creating a DOM node object
   const el = Object.assign(document.createElement(element), properties);
 
@@ -294,7 +330,9 @@ function DOMparseNode(element, properties, children) {
 // If it's a string we just create a text node
 // If it's an object we create a DOM node
 // These will be used in the DOMparseNode function to append to their parent node
-function DOMparseChildren(children) {
+type PossibleChildren = string | Text | HTMLElement;
+
+function DOMparseChildren(children: PossibleChildren[]) {
   return children.map((child) => {
     if (typeof child === "string") {
       return document.createTextNode(child);
@@ -307,11 +345,189 @@ function DOMparseChildren(children) {
 // !-----------------------------------!
 // ! LESSON 47: DOM JSX Engine, part 2
 
+// turning back on noImplicitAny 🤯 all of the content for this chapter besides the namespace stuff is just putting types on the above code from part 1 :)
+
+// we can extend the JSX namespace
+declare namespace JSX {
+  type OurIntrinsicElements = {
+    [P in keyof HTMLElementTagNameMap]: Partial<HTMLElementTagNameMap[P]>;
+  };
+
+  interface IntrinsicElements extends OurIntrinsicElements {}
+
+  interface Element extends HTMLElement {}
+}
+
 // !-----------------------------------!
 // ! LESSON 48: Extending Object, Part 1
+
+// Typescripts control flow analysis lets us narrow down types really well. Objects can be a bit more difficult to narrow down.
+
+// This is how you would do type narrowing in JS
+function print(msg: any) {
+  if (typeof msg === "string") {
+    console.log(msg.toUpperCase());
+  } else if (typeof msg === "number") {
+    console.log(msg.toFixed(2));
+  }
+}
+
+let obj = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+obj = await obj.json();
+
+// right now the type of obj is Promise<any>
+if (typeof obj === "object" && "prop" in obj) {
+  console.assert(typeof obj.prop === "undefined");
+}
+
+if (typeof obj === "object" && obj.hasOwnProperty("prop")) {
+  // @ts-expect-error
+  console.assert(typeof obj.prop === "undefined");
+}
+
+// Typescript doesn't know that obj is an object, it just knows that it's a promise. We can use a helper function to help typescript narrow down the type of obj
+
+// Two generics X and Y. X is the object and Y is the property key
+// X extends {} means IF X is an object
+// Y extends PropertyKey means IF Y is a property key
+// No need to defined the generics as they are inferred
+// obj is X & Record<Y, unknown> means that obj is X and it has a property Y
+// This is a type predicate
+function hasOwnProperty<X extends {}, Y extends PropertyKey>(
+  obj: X,
+  prop: Y
+): obj is X & Record<Y, unknown> {
+  return obj.hasOwnProperty(prop);
+}
+
+// A common thing you may do with objects is iterate over keys and perform an action for each one. Typescript doesn't like this because it doesn't know what the keys are. We can use a helper function to help typescript narrow down the type of obj
+
+const author = {
+  name: "Stefan",
+  age: 30,
+};
+
+Object.keys(author).map((key) => {
+  // ! We don't know what 'key' is!
+  // haha now that we have the new keys property on the Object constructor we do know what key is
+  console.log(author[key]);
+});
+
+// With the helper function if we pass a number we'll return an empty array
+// If we pass an array or string we get a string array
+// If we pass an object we get the actual keys
+
+// In the ambient type file we'll define the keys property on the Object constructor
 
 // !-----------------------------------!
 // ! LESSON 49: Extending Object, Part 2
 
+const storage = {
+  currentValue: 0,
+};
+
+// This won't work because we're trying to assign a value to a readonly property
+Object.defineProperty(storage, "maxValue", {
+  value: 9001,
+  writable: false,
+});
+
+// ! This used to give us an error. Now that define property has a new overload that uses the correct type this doesn't throw an error anymore! :)
+console.log(storage.maxValue);
+
+// We can use assertion signatures to tell typescript that we know what we're doing
+// This is similar to the below in node js
+
+function assertIsNum(val: any): asserts val is number {
+  if (typeof val !== "number") {
+    throw new Error("Not a number!");
+  }
+}
+
+// This will either return number or throw an error
+function multiply(x: any, y: any) {
+  assertIsNum(x);
+  assertIsNum(y);
+
+  return x * y;
+}
+
+// Now we're going to implement our own defineProperty function
+// ! Warning: do not try and use this in production code, this is just for learning purposes
+//@ts-expect-error
+function defineProperty<
+  Obj extends object,
+  Key extends PropertyKey,
+  PDesc extends PropertyDescriptor
+>(obj: Obj, prop: Key, desc: PDesc) {
+  Object.defineProperty(obj, prop, desc);
+}
+
+// There are 3 generics in the above function
+// Obj extends object means that Obj is an object
+// Key extends PropertyKey means that Key is a property key so it's string | number | symbol
+// PDesc extends PropertyDescriptor. This allows us to define the property with all features like writable, enumerable, etc
+
+// let's implement another function signature for this
+// @ts-expect-error
+function defineProperty<
+  Obj extends object,
+  Key extends PropertyKey,
+  PDesc extends PropertyDescriptor
+>(
+  obj: Obj,
+  prop: Key,
+  desc: PDesc
+): asserts obj is Obj & DefineProperty<Key, PDesc> {
+  Object.defineProperty(obj, prop, desc);
+}
+
+// ! My brain melted trying to even type this lol
+/*
+1. If we set writable to any property accessor (get, set) then we don't want to return anything
+2. If we set writable to false, the property is read only so we want to return a readonly version of the property which we use infer to get the type of the property
+3. If we set writable to true, the property is writable so we want to return the property
+4. The last case is the default case where we return a readonly version of the property
+*/
+type DefineProperty<
+  Prop extends PropertyKey,
+  Desc extends PropertyDescriptor
+> = Desc extends {
+  writable: any;
+  set(value: any): any;
+}
+  ? never
+  : Desc extends {
+      writable: any;
+      get(): any;
+    }
+  ? never
+  : Desc extends {
+      writable: false;
+    }
+  ? Readonly<InferValue<Prop, Desc>>
+  : Desc extends {
+      writable: true;
+    }
+  ? InferValue<Prop, Desc>
+  : Readonly<InferValue<Prop, Desc>>;
+
+type InferValue<Prop extends PropertyKey, Desc> = Desc extends {
+  get(): any;
+  value: any;
+}
+  ? never
+  : Desc extends { value: infer T }
+  ? Record<Prop, T>
+  : Desc extends { get(): infer T }
+  ? Record<Prop, T>
+  : never;
+
+// We defined the above types on the ObjectConstructor and now the error that was happening at storage.maxValue is gone! woot woot!
+
 // !-----------------------------------!
 // ! LESSON 50: Epilogue
+
+// In this chapter Stefan provided links to resources that will help me continue learning Typescript and stay up to date with the latest features. I'm excited to continue building upon what I've learned so far and I'm looking forward to learning more about Typescript!
+
+export {};
